@@ -36,10 +36,19 @@ gulp.task('build-css', function() {
         .pipe(gulp.dest('dist/css/'));
 });
 
-gulp.task('create-gh-pages', function() {
-    return gulp.src('demo/index.html')
+gulp.task('gh-pages-replace', function() {
+    return gulp.src([
+            'demo/index.html',
+            'demo/countries.html',
+            'demo/antimeridian.html',
+        ])
         .pipe(replace('%_VERSION_%', PROJECT.version))
         .pipe(replace('%_DATE_%', DATE.toUTCString()))
+        .pipe(gulp.dest('demo'));
+});
+
+gulp.task('gh-pages-copy', function() {
+    return gulp.src('demo/index.html')
         .pipe(gulp.dest('.'));
 });
 
@@ -57,5 +66,6 @@ gulp.task('build', gulpsync.sync([
 
 gulp.task('gh-pages', gulpsync.sync([
     'build',
-    'create-gh-pages'
+    'gh-pages-replace',
+    'gh-pages-copy'
 ]));
