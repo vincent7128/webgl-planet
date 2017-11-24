@@ -223,20 +223,20 @@
         positions = positions.concat(toPoints(coordinates[1], coordinates[1][2] || this.opt.R));
         positions = positions.concat(toPoints(coordinates[2], coordinates[2][2] || this.opt.R));
         positions = positions.concat(toPoints(coordinates[3], coordinates[3][2] || this.opt.R));
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
         indices = [
             0, 1, 2,
             0, 2, 3
         ];
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         coords = [
             0, 0,
             1, 0,
             1, 1,
             0, 1,
         ];
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ARRAY_BUFFER, coordBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW);
         texture.coords = coordBuffer;
@@ -461,28 +461,19 @@
             indexBuffer = gl.createBuffer(),
             indices = [];
         // TODO find bester way with tessellation
-        var latitudeBands = 180 / 6;
-        var longitudeBands = 360 / 6;
-        for (var latNumber = 0; latNumber <= latitudeBands; latNumber++) {
-            var theta = latNumber * Math.PI / latitudeBands;
-            var sinTheta = Math.sin(theta);
-            var cosTheta = Math.cos(theta);
-            for (var longNumber = 0; longNumber <= longitudeBands; longNumber++) {
-                var phi = longNumber * 2 * Math.PI / longitudeBands;
-                var sinPhi = Math.sin(phi);
-                var cosPhi = Math.cos(phi);
-                var x = cosPhi * sinTheta;
-                var y = cosTheta;
-                var z = sinPhi * sinTheta;
-                positions.push(this.opt.R * x);
-                positions.push(this.opt.R * y);
-                positions.push(this.opt.R * z);
+        var precision = this.precision = 6;
+        var lats = 180 / precision;
+        var lngs = 360 / precision;
+        for (var lat = 90; lat >= -90; lat -= precision) {
+            for (var lng = 0; lng <= 360; lng += precision) {
+                positions = positions.concat(toPoints([lng, lat], this.opt.R));
             }
         }
-        var size = longitudeBands + 1;
-        for (var latNumber = 0; latNumber < latitudeBands; latNumber++) {
-            for (var longNumber = 0; longNumber < longitudeBands; longNumber++) {
-                var first = (latNumber * size) + longNumber;
+        this.positions = positions;
+        var size = lngs + 1;
+        for (var lat = 0; lat < lats; lat++) {
+            for (var lng = 0; lng < lngs; lng++) {
+                var first = (lat * size) + lng;
                 var second = first + size;
                 indices.push(first);
                 indices.push(second);
