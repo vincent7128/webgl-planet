@@ -179,47 +179,50 @@
     fn.drawText = function(text, coordinate, zoom) {
         var gl = this.gl,
             img = textImage.toImage(text, function() {
-                this.drawImage(img, coordinate, zoom);
+                var w = img.width * zoom,
+                    h = img.height * zoom,
+                    r = coordinate[2] || this.opt.R + 10,
+                    a = distancePoint(coordinate, w, -90, r),
+                    b = distancePoint(coordinate, w, 90, r),
+                    c = distancePoint(coordinate, w, 90, r),
+                    d = distancePoint(coordinate, w, -90, r);
+                if (coordinate[1] === 90) {
+                    a = distancePoint(a, h, -90, r);
+                    b = distancePoint(b, h, 90, r);
+                    c = distancePoint(c, h, -90, r);
+                    d = distancePoint(d, h, 90, r);
+                } else if (coordinate[1] === -90) {
+                    a = distancePoint(a, h, 90, r);
+                    b = distancePoint(b, h, -90, r);
+                    c = distancePoint(c, h, 90, r);
+                    d = distancePoint(d, h, -90, r);
+                } else {
+                    a = distancePoint(a, h, 0, r);
+                    b = distancePoint(b, h, 0, r);
+                    c = distancePoint(c, h, 180, r);
+                    d = distancePoint(d, h, 180, r);
+                }
+                a.push(r);
+                b.push(r);
+                c.push(r);
+                d.push(r);
+                this.drawImage(img, [a, b, c, d]);
             }.bind(this));
     };
 
-    fn.drawImage = function(image, coordinate, zoom) {
+    fn.drawImage = function(image, coordinates) {
         var gl = this.gl,
-            r = coordinate[2] || this.opt.R + 10,
-            w = image.width * zoom,
-            h = image.height * zoom,
             texture = gl.createTexture(),
             positionBuffer = gl.createBuffer(),
             coordBuffer = gl.createBuffer(),
             indexBuffer = gl.createBuffer(),
             positions = [],
             indices,
-            coords,
-            a = distancePoint(coordinate, w, -90, r),
-            b = distancePoint(coordinate, w, 90, r),
-            c = distancePoint(coordinate, w, 90, r),
-            d = distancePoint(coordinate, w, -90, r);
-
-        if (coordinate[1] === 90) {
-            a = distancePoint(a, h, -90, r);
-            b = distancePoint(b, h, 90, r);
-            c = distancePoint(c, h, -90, r);
-            d = distancePoint(d, h, 90, r);
-        } else if (coordinate[1] === -90) {
-            a = distancePoint(a, h, 90, r);
-            b = distancePoint(b, h, -90, r);
-            c = distancePoint(c, h, 90, r);
-            d = distancePoint(d, h, -90, r);
-        } else {
-            a = distancePoint(a, h, 0, r);
-            b = distancePoint(b, h, 0, r);
-            c = distancePoint(c, h, 180, r);
-            d = distancePoint(d, h, 180, r);
-        }
-        positions = positions.concat(toPoints(a, r));
-        positions = positions.concat(toPoints(b, r));
-        positions = positions.concat(toPoints(c, r));
-        positions = positions.concat(toPoints(d, r));
+            coords;
+        positions = positions.concat(toPoints(coordinates[0], coordinates[0][2] || this.opt.R));
+        positions = positions.concat(toPoints(coordinates[1], coordinates[1][2] || this.opt.R));
+        positions = positions.concat(toPoints(coordinates[2], coordinates[2][2] || this.opt.R));
+        positions = positions.concat(toPoints(coordinates[3], coordinates[3][2] || this.opt.R));
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
         indices = [
