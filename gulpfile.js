@@ -10,7 +10,7 @@ var gulp = require('gulp'),
     DATE;
 
 gulp.task('clean', function() {
-    return gulp.src(['dist', 'index.html'], {
+    return gulp.src(['dist', '*.html'], {
             read: false
         })
         .pipe(clean({
@@ -44,11 +44,6 @@ gulp.task('gh-pages-replace', function() {
         ])
         .pipe(replace('%_VERSION_%', PROJECT.version))
         .pipe(replace('%_DATE_%', DATE.toUTCString()))
-        .pipe(gulp.dest('demo'));
-});
-
-gulp.task('gh-pages-copy', function() {
-    return gulp.src('demo/index.html')
         .pipe(gulp.dest('.'));
 });
 
@@ -66,6 +61,5 @@ gulp.task('build', gulpsync.sync([
 
 gulp.task('gh-pages', gulpsync.sync([
     'build',
-    'gh-pages-replace',
-    'gh-pages-copy'
+    'gh-pages-replace'
 ]));
