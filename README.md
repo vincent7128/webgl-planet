@@ -3,11 +3,11 @@ WebGL Planet
 
 ## About
 
+[📺 Live Demo](https://vincent7128.github.io/webgl-planet/)
+
 Use WebGL with geojson create visual 3D planet model.
 
-This project is under develop, you can get nightly build on [gh-pages branch](https://github.com/vincent7128/webgl-planet/tree/gh-pages).
-
-[📺 Live Demo](https://vincent7128.github.io/webgl-planet/)  
+***This project is under develop.***
 
 ## License
 
