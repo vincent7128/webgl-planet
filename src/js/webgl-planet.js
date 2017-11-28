@@ -32,8 +32,8 @@
         }),
         _option = {
             R: 1,
-            minZoom: -3,
-            maxZoom: -1.01
+            minZoom: -4,
+            maxZoom: -1 + (-1 / 1000)
         },
         fn;
 
@@ -59,24 +59,46 @@
             this.resizeEvent = this.updateSize.bind(this),
             false
         );
-        var rotateEvent = handleMouseMove.bind(this),
-            zoomEvent = handleMouseWheel.bind(this);
-        canvas.addEventListener('mousedown', function(event) {
-            canvas.style.cursor = 'grabbing';
-            this.lastX = event.clientX;
-            this.lastY = event.clientY;
-            canvas.addEventListener('mousemove', rotateEvent);
-        }.bind(this), false);
-        canvas.addEventListener('mouseup', function(event) {
-            canvas.style.cursor = 'grab';
-            canvas.removeEventListener('mousemove', rotateEvent);
-        }, false);
-        canvas.addEventListener('mouseover', function(event) {
-            canvas.addEventListener('wheel', zoomEvent);
-        }, false);
-        canvas.addEventListener('mouseout', function(event) {
-            canvas.removeEventListener('wheel', zoomEvent);
-        }, false);
+        if (!window.TouchEvent) {
+            var mouseRotateEvent = handleMouseMove.bind(this),
+                mouseZoomEvent = handleMouseWheel.bind(this);
+            canvas.addEventListener('mousedown', function(event) {
+                canvas.style.cursor = 'grabbing';
+                this.lastX = event.clientX;
+                this.lastY = event.clientY;
+                canvas.addEventListener('mousemove', mouseRotateEvent);
+            }.bind(this), false);
+            canvas.addEventListener('mouseup', function(event) {
+                canvas.style.cursor = 'grab';
+                canvas.removeEventListener('mousemove', mouseRotateEvent);
+            }, false);
+            canvas.addEventListener('mouseover', function(event) {
+                canvas.addEventListener('wheel', mouseZoomEvent);
+            }, false);
+            canvas.addEventListener('mouseout', function(event) {
+                canvas.removeEventListener('wheel', mouseZoomEvent);
+            }, false);
+        } else {
+            var touchRotateEvent = handleTouchMove.bind(this),
+                touchZoomEvent = handleTouchZoom.bind(this);
+            canvas.addEventListener('touchstart', function(event) {
+                event.preventDefault();
+                if (event.touches.length < 2) {
+                    canvas.removeEventListener('touchmove', touchRotateEvent);
+                    return;
+                }
+                this.lastScale = event.scale;
+                this.lastX = event.touches[0].screenX;
+                this.lastY = event.touches[0].screenY;
+                canvas.addEventListener('touchmove', touchRotateEvent);
+                canvas.addEventListener('touchmove', touchZoomEvent);
+            }.bind(this), false);
+            canvas.addEventListener('touchend', function(event) {
+                event.preventDefault();
+                canvas.removeEventListener('touchmove', touchRotateEvent);
+                canvas.removeEventListener('touchmove', touchZoomEvent);
+            }, false);
+        }
         this.center(0, 0);
         this.zoom(opt.minZoom);
         this.updateSize();
@@ -181,7 +203,7 @@
             img = textImage.toImage(text, function() {
                 var w = img.width * zoom,
                     h = img.height * zoom,
-                    r = coordinate[2] || this.opt.R + 10,
+                    r = coordinate[2] || this.opt.R + 100,
                     a = distancePoint(coordinate, w, -90, r),
                     b = distancePoint(coordinate, w, 90, r),
                     c = distancePoint(coordinate, w, 90, r),
@@ -334,7 +356,7 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         this.buffers.push({
             // TODO fill up polygon with triangles
-            type: gl.LINES, //gl.POINTS, // gl.TRIANGLES,
+            type: gl.LINES, // gl.TRIANGLES,
             color: color,
             position: positionBuffer,
             indices: indexBuffer,
@@ -499,17 +521,26 @@
 
     function handleMouseMove(event) {
         event.preventDefault();
-        var newX = event.clientX;
-        var newY = event.clientY;
-        this.x -= degToRad(this.lastY - newY) / 10;
+        rotateEvent.call(this, event.clientX, event.clientY);
+    }
+
+    function handleTouchMove(event) {
+        event.preventDefault();
+        if (this.lastScale === event.scale) {
+            rotateEvent.call(this, event.touches[0].screenX, event.touches[0].screenY);
+        }
+    }
+
+    function rotateEvent(x, y) {
+        this.x -= degToRad(this.lastY - y) / 10;
         if (Math.round(this.x / Math.PI) % 2) {
-            this.y += degToRad(this.lastX - newX) / 10;
+            this.y += degToRad(this.lastX - x) / 10;
         } else {
-            this.y -= degToRad(this.lastX - newX) / 10;
+            this.y -= degToRad(this.lastX - x) / 10;
         }
         render.call(this);
-        this.lastX = newX;
-        this.lastY = newY;
+        this.lastX = x;
+        this.lastY = y;
     }
 
     var zlevel = 100;
@@ -517,6 +548,12 @@
     function handleMouseWheel(event) {
         event.preventDefault();
         this.zoom(Math.floor((this.z - (event.deltaY / zlevel)) * zlevel) / zlevel);
+    }
+
+    function handleTouchZoom(event) {
+        event.preventDefault();
+        this.zoom(Math.floor((this.z - (this.lastScale - event.scale)) * zlevel) / zlevel);
+        this.lastScale = event.scale;
     }
 
     function earcut(coords, dim) {
