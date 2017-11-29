@@ -556,30 +556,6 @@
         this.lastScale = event.scale;
     }
 
-    function earcut(coords, dim) {
-        var array = [],
-            dim = dim || 2;
-        for (var i = 0, j = coords.length + 1 - dim; i < j; i += dim) {
-            var a = [];
-            for (var k = i, l = k + dim; k < l; k++) {
-                a.push(coords[k]);
-            }
-            a.push(0);
-            array.push(a);
-        }
-        array.sort(function(a, b) {
-            if (a[0] < b[0]) {
-                if (a[1] > b[1]) {
-                    if (a[1] < b[1]) {
-                        return 1;
-                    }
-                }
-            }
-            return -1;
-        });
-        var indices = [];
-    }
-
     function degToRad(degrees) {
         return degrees * Math.PI / 180;
     }
