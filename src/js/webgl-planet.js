@@ -199,31 +199,26 @@
             img = textImage.toImage(text, function() {
                 var w = img.width * zoom,
                     h = img.height * zoom,
-                    r = coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R,
-                    a = distancePoint(coordinate, w, -90, r),
-                    b = distancePoint(coordinate, w, 90, r),
-                    c = distancePoint(coordinate, w, 90, r),
-                    d = distancePoint(coordinate, w, -90, r);
+                    a = distancePoint(this, coordinate, w, -90),
+                    b = distancePoint(this, coordinate, w, 90),
+                    c = distancePoint(this, coordinate, w, 90),
+                    d = distancePoint(this, coordinate, w, -90);
                 if (coordinate[1] === 90) {
-                    a = distancePoint(a, h, -90, r);
-                    b = distancePoint(b, h, 90, r);
-                    c = distancePoint(c, h, -90, r);
-                    d = distancePoint(d, h, 90, r);
+                    a = distancePoint(this, a, h, -90);
+                    b = distancePoint(this, b, h, 90);
+                    c = distancePoint(this, c, h, -90);
+                    d = distancePoint(this, d, h, 90);
                 } else if (coordinate[1] === -90) {
-                    a = distancePoint(a, h, 90, r);
-                    b = distancePoint(b, h, -90, r);
-                    c = distancePoint(c, h, 90, r);
-                    d = distancePoint(d, h, -90, r);
+                    a = distancePoint(this, a, h, 90);
+                    b = distancePoint(this, b, h, -90);
+                    c = distancePoint(this, c, h, 90);
+                    d = distancePoint(this, d, h, -90);
                 } else {
-                    a = distancePoint(a, h, 0, r);
-                    b = distancePoint(b, h, 0, r);
-                    c = distancePoint(c, h, 180, r);
-                    d = distancePoint(d, h, 180, r);
+                    a = distancePoint(this, a, h, 0);
+                    b = distancePoint(this, b, h, 0);
+                    c = distancePoint(this, c, h, 180);
+                    d = distancePoint(this, d, h, 180);
                 }
-                a.push(r);
-                b.push(r);
-                c.push(r);
-                d.push(r);
                 this.drawImage(img, [a, b, c, d]);
             }.bind(this));
     };
@@ -237,10 +232,10 @@
             positions = [],
             indices,
             coords;
-        positions = positions.concat(toXYZ(coordinates[0], coordinates[0][2] || this.opt.R));
-        positions = positions.concat(toXYZ(coordinates[1], coordinates[1][2] || this.opt.R));
-        positions = positions.concat(toXYZ(coordinates[2], coordinates[2][2] || this.opt.R));
-        positions = positions.concat(toXYZ(coordinates[3], coordinates[3][2] || this.opt.R));
+        positions.push.apply(positions, toXYZ(this, coordinates[0]));
+        positions.push.apply(positions, toXYZ(this, coordinates[1]));
+        positions.push.apply(positions, toXYZ(this, coordinates[2]));
+        positions.push.apply(positions, toXYZ(this, coordinates[3]));
         indices = [
             0, 1, 2,
             0, 2, 3
@@ -280,7 +275,7 @@
     fn.drawPoint = function(coordinate, color) {
         var gl = this.gl,
             positionBuffer = gl.createBuffer(),
-            positions = toXYZ(coordinate, coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R),
+            positions = toXYZ(this, coordinate),
             indexBuffer = gl.createBuffer(),
             indices = [0];
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -302,18 +297,16 @@
             positionBuffer = gl.createBuffer(),
             positions = [],
             indexBuffer = gl.createBuffer(),
-            indices = [],
-            last = coordinates.length - 1;
+            indices = [];
         coordinates.forEach(function(coordinate, i) {
-            positions = positions.concat(toXYZ(
-                coordinate,
-                coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R
-            ));
+            positions.push.apply(positions, toXYZ(this, coordinate));
+        }.bind(this));
+        for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
-            if (i < last) {
+            if (i < k) {
                 indices.push(i + 1);
             }
-        }.bind(this));
+        }
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -336,10 +329,7 @@
             indices = [],
             last = coordinates.length - 1;
         coordinates.forEach(function(coordinate, i) {
-            positions = positions.concat(toXYZ(
-                coordinate,
-                coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R
-            ));
+            positions.push.apply(positions, toXYZ(this, coordinate));
             indices.push(i);
             if (i < last) {
                 indices.push(i + 1);
@@ -484,7 +474,7 @@
         var lngs = 360 / precision;
         for (var lat = 90; lat >= -90; lat -= precision) {
             for (var lng = 0; lng <= 360; lng += precision) {
-                positions = positions.concat(toXYZ([lng, lat], this.opt.R));
+                positions.push.apply(positions, toXYZ(this, [lng, lat]));
             }
         }
         this.positions = positions;
@@ -560,8 +550,9 @@
         return radians * 180 / Math.PI;
     }
 
-    function distancePoint(coordinate, distance, azimuth, radius) {
-        var angle = distance / radius,
+    function distancePoint(planet, coordinate, distance, azimuth) {
+        var radius = coordinate[2] !== undefined ? coordinate[2] + planet.opt.R : planet.opt.R,
+            angle = distance / radius,
             azimuth = degToRad(azimuth),
             lng = degToRad(coordinate[0]),
             lat = degToRad(coordinate[1]),
@@ -576,11 +567,12 @@
                 Math.sin(azimuth) * sinAngle * cosLat,
                 cosAngle - sinLat * alpha
             );
-        return [(radToDeg(lng) + 540) % 360 - 180, radToDeg(lat)];
+        return [(radToDeg(lng) + 540) % 360 - 180, radToDeg(lat), coordinate[2]];
     }
 
-    function toXYZ(coordinate, radius) {
-        var lng = (180 + coordinate[0]) * (Math.PI / 180),
+    function toXYZ(planet, coordinate) {
+        var radius = coordinate[2] !== undefined ? coordinate[2] + planet.opt.R : planet.opt.R,
+            lng = (180 + coordinate[0]) * (Math.PI / 180),
             lat = (90 - coordinate[1]) * (Math.PI / 180);
         return [-radius * Math.sin(lat) * Math.cos(lng),
             radius * Math.cos(lat),
