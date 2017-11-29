@@ -479,7 +479,7 @@
             indexBuffer = gl.createBuffer(),
             indices = [];
         // TODO find bester way with tessellation
-        var precision = this.precision = 6;
+        var precision = this.precision = 3;
         var lats = 180 / precision;
         var lngs = 360 / precision;
         for (var lat = 90; lat >= -90; lat -= precision) {
