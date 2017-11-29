@@ -40,7 +40,7 @@ gulp.task('gh-pages-replace', function() {
     return gulp.src([
             'demo/index.html',
             'demo/countries.html',
-            'demo/antimeridian.html',
+            'demo/coordinate.html',
         ])
         .pipe(replace('%_VERSION_%', PROJECT.version))
         .pipe(replace('%_DATE_%', DATE.toUTCString()))
