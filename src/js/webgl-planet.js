@@ -203,7 +203,7 @@
             img = textImage.toImage(text, function() {
                 var w = img.width * zoom,
                     h = img.height * zoom,
-                    r = coordinate[2] || this.opt.R + 100,
+                    r = coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R,
                     a = distancePoint(coordinate, w, -90, r),
                     b = distancePoint(coordinate, w, 90, r),
                     c = distancePoint(coordinate, w, 90, r),
@@ -284,7 +284,7 @@
     fn.drawPoint = function(coordinate, color) {
         var gl = this.gl,
             positionBuffer = gl.createBuffer(),
-            positions = toXYZ(coordinate, coordinate[2] || this.opt.R),
+            positions = toXYZ(coordinate, coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R),
             indexBuffer = gl.createBuffer(),
             indices = [0];
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -311,7 +311,7 @@
         coordinates.forEach(function(coordinate, i) {
             positions = positions.concat(toXYZ(
                 coordinate,
-                coordinate[2] || this.opt.R
+                coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R
             ));
             indices.push(i);
             if (i < last) {
@@ -342,7 +342,7 @@
         coordinates.forEach(function(coordinate, i) {
             positions = positions.concat(toXYZ(
                 coordinate,
-                coordinate[2] || this.opt.R
+                coordinate[2] ? this.opt.R + coordinate[2] : this.opt.R
             ));
             indices.push(i);
             if (i < last) {
