@@ -241,10 +241,10 @@
             positions = [],
             indices,
             coords;
-        positions = positions.concat(toPoints(coordinates[0], coordinates[0][2] || this.opt.R));
-        positions = positions.concat(toPoints(coordinates[1], coordinates[1][2] || this.opt.R));
-        positions = positions.concat(toPoints(coordinates[2], coordinates[2][2] || this.opt.R));
-        positions = positions.concat(toPoints(coordinates[3], coordinates[3][2] || this.opt.R));
+        positions = positions.concat(toXYZ(coordinates[0], coordinates[0][2] || this.opt.R));
+        positions = positions.concat(toXYZ(coordinates[1], coordinates[1][2] || this.opt.R));
+        positions = positions.concat(toXYZ(coordinates[2], coordinates[2][2] || this.opt.R));
+        positions = positions.concat(toXYZ(coordinates[3], coordinates[3][2] || this.opt.R));
         indices = [
             0, 1, 2,
             0, 2, 3
@@ -284,7 +284,7 @@
     fn.drawPoint = function(coordinate, color) {
         var gl = this.gl,
             positionBuffer = gl.createBuffer(),
-            positions = toPoints(coordinate, coordinate[2] || this.opt.R),
+            positions = toXYZ(coordinate, coordinate[2] || this.opt.R),
             indexBuffer = gl.createBuffer(),
             indices = [0];
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -309,7 +309,7 @@
             indices = [],
             last = coordinates.length - 1;
         coordinates.forEach(function(coordinate, i) {
-            positions = positions.concat(toPoints(
+            positions = positions.concat(toXYZ(
                 coordinate,
                 coordinate[2] || this.opt.R
             ));
@@ -338,9 +338,9 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [],
-            last = coordinates.length - 1;;
+            last = coordinates.length - 1;
         coordinates.forEach(function(coordinate, i) {
-            positions = positions.concat(toPoints(
+            positions = positions.concat(toXYZ(
                 coordinate,
                 coordinate[2] || this.opt.R
             ));
@@ -488,7 +488,7 @@
         var lngs = 360 / precision;
         for (var lat = 90; lat >= -90; lat -= precision) {
             for (var lng = 0; lng <= 360; lng += precision) {
-                positions = positions.concat(toPoints([lng, lat], this.opt.R));
+                positions = positions.concat(toXYZ([lng, lat], this.opt.R));
             }
         }
         this.positions = positions;
@@ -607,7 +607,7 @@
         return [(radToDeg(lng) + 540) % 360 - 180, radToDeg(lat)];
     }
 
-    function toPoints(coordinate, radius) {
+    function toXYZ(coordinate, radius) {
         var lng = (180 + coordinate[0]) * (Math.PI / 180),
             lat = (90 - coordinate[1]) * (Math.PI / 180);
         return [-radius * Math.sin(lat) * Math.cos(lng),
