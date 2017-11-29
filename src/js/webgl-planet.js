@@ -33,7 +33,7 @@
         _option = {
             R: 1,
             minZoom: -4,
-            maxZoom: -1 + (-1 / 1000)
+            maxZoom: -1 + (-1 / 100)
         },
         fn;
 
