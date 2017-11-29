@@ -132,69 +132,65 @@
     fn.drawGeoJSON = function(geojson) {
         if ('FeatureCollection' === geojson.type) {
             geojson['features'].forEach(function(feature) {
-                this.drawFeature(feature);
+                this.drawGeoJSON(feature);
             }.bind(this));
         } else if ('Feature' === geojson.type) {
-            this.drawFeature(geojson);
-        }
-    };
-
-    fn.drawFeature = function(feature) {
-        switch (feature.geometry.type) {
-            case 'Point':
-                setTimeout(function() {
-                    this.drawPoint(
-                        feature.geometry.coordinates[0],
-                        Color('black').vec4()
-                    );
-                }.bind(this), 0);
-                break;
-            case 'MultiPoint':
-                feature.geometry.coordinates.forEach(function(coordinates) {
+            switch (geojson.geometry.type) {
+                case 'Point':
                     setTimeout(function() {
                         this.drawPoint(
-                            coordinates[0],
+                            geojson.geometry.coordinates[0],
                             Color('black').vec4()
                         );
                     }.bind(this), 0);
-                }.bind(this));
-                break;
-            case 'LineString':
-                setTimeout(function() {
-                    this.drawLine(
-                        feature.geometry.coordinates[0],
-                        Color('red').vec4()
-                    );
-                }.bind(this), 0);
-                break;
-            case 'MultiLineString':
-                feature.geometry.coordinates.forEach(function(coordinates) {
+                    break;
+                case 'MultiPoint':
+                    geojson.geometry.coordinates.forEach(function(coordinates) {
+                        setTimeout(function() {
+                            this.drawPoint(
+                                coordinates[0],
+                                Color('black').vec4()
+                            );
+                        }.bind(this), 0);
+                    }.bind(this));
+                    break;
+                case 'LineString':
                     setTimeout(function() {
                         this.drawLine(
-                            coordinates[0],
+                            geojson.geometry.coordinates[0],
                             Color('red').vec4()
                         );
                     }.bind(this), 0);
-                }.bind(this));
-                break;
-            case 'Polygon':
-                setTimeout(function() {
-                    this.drawPolygon(
-                        feature.geometry.coordinates[0],
-                        Color('green').vec4()
-                    );
-                }.bind(this), 0);
-                break;
-            case 'MultiPolygon':
-                feature.geometry.coordinates.forEach(function(coordinates) {
+                    break;
+                case 'MultiLineString':
+                    geojson.geometry.coordinates.forEach(function(coordinates) {
+                        setTimeout(function() {
+                            this.drawLine(
+                                coordinates[0],
+                                Color('red').vec4()
+                            );
+                        }.bind(this), 0);
+                    }.bind(this));
+                    break;
+                case 'Polygon':
                     setTimeout(function() {
                         this.drawPolygon(
-                            coordinates[0],
+                            geojson.geometry.coordinates[0],
                             Color('green').vec4()
                         );
                     }.bind(this), 0);
-                }.bind(this));
-                break;
+                    break;
+                case 'MultiPolygon':
+                    geojson.geometry.coordinates.forEach(function(coordinates) {
+                        setTimeout(function() {
+                            this.drawPolygon(
+                                coordinates[0],
+                                Color('green').vec4()
+                            );
+                        }.bind(this), 0);
+                    }.bind(this));
+                    break;
+            }
         }
     };
 
