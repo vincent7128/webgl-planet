@@ -298,9 +298,29 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [];
-        coordinates.forEach(function(coordinate, i) {
-            positions.push.apply(positions, toXYZ(this, coordinate));
-        }.bind(this));
+        for (var i = 0, j = coordinates.length - 1; i < j; i++) {
+            var cp = coordinates[i],
+                np = coordinates[i + 1];
+            for (var lat = cp[1]; lat >= np[1]; lat -= this.precision) {
+                for (var lng = cp[0]; lng <= np[0]; lng += this.precision) {
+                    positions.push.apply(positions, toXYZ(this, [lng, lat, cp[2]]));
+                }
+            }
+            // for (var lat = cp[1]; lat >= np[1]; lat -= 6) {
+            //     for (var lng = cp[0]; lng >= np[0]; lng -= 6) {
+            //         positions.push.apply(positions, toXYZ(this, [lng, lat, cp[2]]));
+            //     }
+            // }
+            // for (var lat = cp[1]; lat >= np[1]; lat -= 6) {
+            //     for (var lng = cp[0]; lng >= np[0]; lng -= 6) {
+            //         positions.push.apply(positions, toXYZ(this, [lng, lat, cp[2]]));
+            //     }
+            // }
+        }
+        positions.push.apply(positions, toXYZ(this, coordinates[coordinates.length - 1]));
+        // coordinates.forEach(function(coordinate, i) {
+        //     positions.push.apply(positions, toXYZ(this, coordinate));
+        // }.bind(this));
         for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
             if (i < k) {
@@ -469,40 +489,49 @@
             indexBuffer = gl.createBuffer(),
             indices = [];
         // TODO find bester way with tessellation
-        var precision = this.precision = 3;
+        var precision = this.precision = 1;
         var lats = 180 / precision;
         var lngs = 360 / precision;
+        var data = []
         for (var lat = 90; lat >= -90; lat -= precision) {
             for (var lng = 0; lng <= 360; lng += precision) {
-                positions.push.apply(positions, toXYZ(this, [lng, lat]));
+                data.push([lng, lat]);
             }
         }
-        this.positions = positions;
-        var size = lngs + 1;
-        for (var lat = 0; lat < lats; lat++) {
-            for (var lng = 0; lng < lngs; lng++) {
-                var first = (lat * size) + lng;
-                var second = first + size;
-                indices.push(first);
-                indices.push(second);
-                indices.push(first + 1);
-                indices.push(second);
-                indices.push(second + 1);
-                indices.push(first + 1);
-            }
-        }
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-        this.buffers.push({
-            type: gl.TRIANGLES,
-            color: color,
-            position: positionBuffer,
-            indices: indexBuffer,
-            size: indices.length
-        });
-        render.call(this);
+        parallel(
+            data,
+            function(d) {
+                positions.push.apply(positions, toXYZ(this, d));
+            }.bind(this),
+            function(d, i) {
+                this.positions = positions;
+                var size = lngs + 1;
+                for (var lat = 0; lat < lats; lat++) {
+                    for (var lng = 0; lng < lngs; lng++) {
+                        var first = (lat * size) + lng;
+                        var second = first + size;
+                        indices.push(first);
+                        indices.push(second);
+                        indices.push(first + 1);
+                        indices.push(second);
+                        indices.push(second + 1);
+                        indices.push(first + 1);
+                    }
+                }
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+                this.buffers.unshift({
+                    type: gl.TRIANGLES,
+                    color: color,
+                    position: positionBuffer,
+                    indices: indexBuffer,
+                    size: indices.length
+                });
+                render.call(this);
+            }.bind(this)
+        );
     };
 
     function handleMouseMove(event) {
@@ -582,5 +611,19 @@
 
     function powerOf2(value) {
         return (value & -value) === value;
+    }
+
+    function parallel(data, work, then) {
+        var end = data.length - 1;
+        data.forEach(function(d, i) {
+            setTimeout(function() {
+                work(d);
+                if (i == end) {
+                    if (then) {
+                        then(d, i);
+                    }
+                }
+            }.bind(this), 0);
+        }.bind(this));
     }
 })();

@@ -7,20 +7,27 @@ window.addEventListener('load', function() {
     var line = [];
     var red = Color('red').vec4();
     var blue = Color('blue').vec4();
-    for (var lat = 90; lat >= -90; lat -= 6) {
-        for (var lng = 360; lng >= 0; lng -= 6) {
-            line.push([lng, lat, 50]);
-        }
-        planet.drawLine(line, red);
-        line = [];
+    for (var lat = 80; lat >= -80; lat -= 10) {
+        planet.drawLine([[0, lat, 50],[360, lat, 50]], red);;
     }
-    for (var lng = 360; lng >= 0; lng -= 6) {
-        for (var lat = 90; lat >= -90; lat -= 6) {
-            line.push([lng, lat, 50]);
-        }
-        planet.drawLine(line, blue);
-        line = [];
+    for (var lng = 360; lng >= 0; lng -= 10) {
+        planet.drawLine([[lng, 80, 50], [lng, -80, 50]], blue);;
     }
+    // for (var lat = 90; lat >= -90; lat -= 6) {
+    //     for (var lng = 360; lng >= 0; lng -= 6) {
+    //         line.push([lng, lat, 50]);
+    //     }
+    //     planet.drawLine(line, red);
+    //     line = [];
+    // }
+
+    // for (var lng = 360; lng >= 0; lng -= 6) {
+    //     for (var lat = 90; lat >= -90; lat -= 6) {
+    //         line.push([lng, lat, 50]);
+    //     }
+    //     planet.drawLine(line, blue);
+    //     line = [];
+    // }
     for (var lat = 80; lat >= -80; lat -= 10) {
         planet.drawText(lat, [ 0, lat, 100], 6);
     }
