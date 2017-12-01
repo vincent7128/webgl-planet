@@ -33,7 +33,7 @@
         _option = {
             R: 1,
             minZoom: -4,
-            maxZoom: -1 + (-1 / 1000)
+            maxZoom: -1 + (-1 / 100)
         },
         fn;
 
@@ -132,69 +132,65 @@
     fn.drawGeoJSON = function(geojson) {
         if ('FeatureCollection' === geojson.type) {
             geojson['features'].forEach(function(feature) {
-                this.drawFeature(feature);
+                this.drawGeoJSON(feature);
             }.bind(this));
         } else if ('Feature' === geojson.type) {
-            this.drawFeature(geojson);
-        }
-    };
-
-    fn.drawFeature = function(feature) {
-        switch (feature.geometry.type) {
-            case 'Point':
-                setTimeout(function() {
-                    this.drawPoint(
-                        feature.geometry.coordinates[0],
-                        Color('black').vec4()
-                    );
-                }.bind(this), 0);
-                break;
-            case 'MultiPoint':
-                feature.geometry.coordinates.forEach(function(coordinates) {
+            switch (geojson.geometry.type) {
+                case 'Point':
                     setTimeout(function() {
                         this.drawPoint(
-                            coordinates[0],
+                            geojson.geometry.coordinates[0],
                             Color('black').vec4()
                         );
                     }.bind(this), 0);
-                }.bind(this));
-                break;
-            case 'LineString':
-                setTimeout(function() {
-                    this.drawLine(
-                        feature.geometry.coordinates[0],
-                        Color('red').vec4()
-                    );
-                }.bind(this), 0);
-                break;
-            case 'MultiLineString':
-                feature.geometry.coordinates.forEach(function(coordinates) {
+                    break;
+                case 'MultiPoint':
+                    geojson.geometry.coordinates.forEach(function(coordinates) {
+                        setTimeout(function() {
+                            this.drawPoint(
+                                coordinates[0],
+                                Color('black').vec4()
+                            );
+                        }.bind(this), 0);
+                    }.bind(this));
+                    break;
+                case 'LineString':
                     setTimeout(function() {
                         this.drawLine(
-                            coordinates[0],
+                            geojson.geometry.coordinates[0],
                             Color('red').vec4()
                         );
                     }.bind(this), 0);
-                }.bind(this));
-                break;
-            case 'Polygon':
-                setTimeout(function() {
-                    this.drawPolygon(
-                        feature.geometry.coordinates[0],
-                        Color('green').vec4()
-                    );
-                }.bind(this), 0);
-                break;
-            case 'MultiPolygon':
-                feature.geometry.coordinates.forEach(function(coordinates) {
+                    break;
+                case 'MultiLineString':
+                    geojson.geometry.coordinates.forEach(function(coordinates) {
+                        setTimeout(function() {
+                            this.drawLine(
+                                coordinates[0],
+                                Color('red').vec4()
+                            );
+                        }.bind(this), 0);
+                    }.bind(this));
+                    break;
+                case 'Polygon':
                     setTimeout(function() {
                         this.drawPolygon(
-                            coordinates[0],
+                            geojson.geometry.coordinates[0],
                             Color('green').vec4()
                         );
                     }.bind(this), 0);
-                }.bind(this));
-                break;
+                    break;
+                case 'MultiPolygon':
+                    geojson.geometry.coordinates.forEach(function(coordinates) {
+                        setTimeout(function() {
+                            this.drawPolygon(
+                                coordinates[0],
+                                Color('green').vec4()
+                            );
+                        }.bind(this), 0);
+                    }.bind(this));
+                    break;
+            }
         }
     };
 
@@ -203,31 +199,26 @@
             img = textImage.toImage(text, function() {
                 var w = img.width * zoom,
                     h = img.height * zoom,
-                    r = coordinate[2] || this.opt.R + 100,
-                    a = distancePoint(coordinate, w, -90, r),
-                    b = distancePoint(coordinate, w, 90, r),
-                    c = distancePoint(coordinate, w, 90, r),
-                    d = distancePoint(coordinate, w, -90, r);
+                    a = distancePoint(this, coordinate, w, -90),
+                    b = distancePoint(this, coordinate, w, 90),
+                    c = distancePoint(this, coordinate, w, 90),
+                    d = distancePoint(this, coordinate, w, -90);
                 if (coordinate[1] === 90) {
-                    a = distancePoint(a, h, -90, r);
-                    b = distancePoint(b, h, 90, r);
-                    c = distancePoint(c, h, -90, r);
-                    d = distancePoint(d, h, 90, r);
+                    a = distancePoint(this, a, h, -90);
+                    b = distancePoint(this, b, h, 90);
+                    c = distancePoint(this, c, h, -90);
+                    d = distancePoint(this, d, h, 90);
                 } else if (coordinate[1] === -90) {
-                    a = distancePoint(a, h, 90, r);
-                    b = distancePoint(b, h, -90, r);
-                    c = distancePoint(c, h, 90, r);
-                    d = distancePoint(d, h, -90, r);
+                    a = distancePoint(this, a, h, 90);
+                    b = distancePoint(this, b, h, -90);
+                    c = distancePoint(this, c, h, 90);
+                    d = distancePoint(this, d, h, -90);
                 } else {
-                    a = distancePoint(a, h, 0, r);
-                    b = distancePoint(b, h, 0, r);
-                    c = distancePoint(c, h, 180, r);
-                    d = distancePoint(d, h, 180, r);
+                    a = distancePoint(this, a, h, 0);
+                    b = distancePoint(this, b, h, 0);
+                    c = distancePoint(this, c, h, 180);
+                    d = distancePoint(this, d, h, 180);
                 }
-                a.push(r);
-                b.push(r);
-                c.push(r);
-                d.push(r);
                 this.drawImage(img, [a, b, c, d]);
             }.bind(this));
     };
@@ -241,10 +232,10 @@
             positions = [],
             indices,
             coords;
-        positions = positions.concat(toPoints(coordinates[0], coordinates[0][2] || this.opt.R));
-        positions = positions.concat(toPoints(coordinates[1], coordinates[1][2] || this.opt.R));
-        positions = positions.concat(toPoints(coordinates[2], coordinates[2][2] || this.opt.R));
-        positions = positions.concat(toPoints(coordinates[3], coordinates[3][2] || this.opt.R));
+        positions.push.apply(positions, toXYZ(this, coordinates[0]));
+        positions.push.apply(positions, toXYZ(this, coordinates[1]));
+        positions.push.apply(positions, toXYZ(this, coordinates[2]));
+        positions.push.apply(positions, toXYZ(this, coordinates[3]));
         indices = [
             0, 1, 2,
             0, 2, 3
@@ -284,7 +275,7 @@
     fn.drawPoint = function(coordinate, color) {
         var gl = this.gl,
             positionBuffer = gl.createBuffer(),
-            positions = toPoints(coordinate, coordinate[2] || this.opt.R),
+            positions = toXYZ(this, coordinate),
             indexBuffer = gl.createBuffer(),
             indices = [0];
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -306,18 +297,87 @@
             positionBuffer = gl.createBuffer(),
             positions = [],
             indexBuffer = gl.createBuffer(),
-            indices = [],
-            last = coordinates.length - 1;
-        coordinates.forEach(function(coordinate, i) {
-            positions = positions.concat(toPoints(
-                coordinate,
-                coordinate[2] || this.opt.R
-            ));
+            indices = [];
+        for (var i = 0, j = coordinates.length - 1; i < j; i++) {
+            positions.push.apply(positions, toXYZ(this, coordinates[i]));
+            var a = coordinates[i],
+                b = coordinates[i + 1],
+                rad = Math.atan2(b[1] - a[1], b[0] - a[0]),
+                deg = radToDeg(rad),
+                m = (b[1] - a[1]) / (b[0] - a[0]),
+                mp = [];
+            switch (deg) {
+                case 0:
+                    for (var lng = a[0]; lng <= b[0]; lng++) {
+                        mp[0] = lng;
+                        mp[1] = a[1];
+                        mp[2] = a[2];
+                        positions.push.apply(positions, toXYZ(this, mp));
+                    }
+                    break;
+                case 180:
+                    for (var lng = a[0]; lng >= b[0]; lng--) {
+                        mp[0] = lng;
+                        mp[1] = a[1];
+                        mp[2] = a[2];
+                        positions.push.apply(positions, toXYZ(this, mp));
+                    }
+                    break;
+                case 90:
+                    for (var lat = a[1]; lat <= b[1]; lat++) {
+                        mp[0] = a[0];
+                        mp[1] = lat;
+                        mp[2] = a[2];
+                        positions.push.apply(positions, toXYZ(this, mp));
+                    }
+                    break;
+                case -90:
+                    for (var lat = a[1]; lat >= b[1]; lat--) {
+                        mp[0] = a[0];
+                        mp[1] = lat;
+                        mp[2] = a[2];
+                        positions.push.apply(positions, toXYZ(this, mp));
+                    }
+                    break;
+                default:
+                    if (deg > -45 && deg < 45) {
+                        for (var lng = a[0]; lng <= b[0]; lng++) {
+                            mp[0] = lng;
+                            mp[1] = (m * (lng - a[0])) + a[1];//lng * Math.tan(rad);
+                            mp[2] = a[2];
+                            positions.push.apply(positions, toXYZ(this, mp));
+                        }
+                    } else if (deg > 135 || deg < -135) {
+                        for (var lng = a[0]; lng >= b[0]; lng--) {
+                            mp[0] = lng;
+                            mp[1] = (m * (lng - a[0])) + a[1];//lng * Math.tan(rad);
+                            mp[2] = a[2];
+                            positions.push.apply(positions, toXYZ(this, mp));
+                        }
+                    } else if (deg > 0) {
+                        for (var lat = a[1]; lat <= b[1]; lat++) {
+                            mp[0] = ((lat - a[1]) / m) + a[0];//lat * Math.cos(rad);
+                            mp[1] = lat;
+                            mp[2] = a[2];
+                            positions.push.apply(positions, toXYZ(this, mp));
+                        }
+                    } else {
+                        for (var lat = a[1]; lat >= b[1]; lat--) {
+                            mp[0] = ((lat - a[1]) / m) + a[0];//lat * Math.cos(rad);
+                            mp[1] = lat;
+                            mp[2] = a[2];
+                            positions.push.apply(positions, toXYZ(this, mp));
+                        }
+                    }
+            };
+        }
+        positions.push.apply(positions, toXYZ(this, coordinates[coordinates.length - 1]));
+        for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
-            if (i < last) {
+            if (i < k) {
                 indices.push(i + 1);
             }
-        }.bind(this));
+        }
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -338,12 +398,9 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [],
-            last = coordinates.length - 1;;
+            last = coordinates.length - 1;
         coordinates.forEach(function(coordinate, i) {
-            positions = positions.concat(toPoints(
-                coordinate,
-                coordinate[2] || this.opt.R
-            ));
+            positions.push.apply(positions, toXYZ(this, coordinate));
             indices.push(i);
             if (i < last) {
                 indices.push(i + 1);
@@ -483,40 +540,49 @@
             indexBuffer = gl.createBuffer(),
             indices = [];
         // TODO find bester way with tessellation
-        var precision = this.precision = 6;
+        var precision = this.precision = 1;
         var lats = 180 / precision;
         var lngs = 360 / precision;
+        var data = []
         for (var lat = 90; lat >= -90; lat -= precision) {
             for (var lng = 0; lng <= 360; lng += precision) {
-                positions = positions.concat(toPoints([lng, lat], this.opt.R));
+                data.push([lng, lat]);
             }
         }
-        this.positions = positions;
-        var size = lngs + 1;
-        for (var lat = 0; lat < lats; lat++) {
-            for (var lng = 0; lng < lngs; lng++) {
-                var first = (lat * size) + lng;
-                var second = first + size;
-                indices.push(first);
-                indices.push(second);
-                indices.push(first + 1);
-                indices.push(second);
-                indices.push(second + 1);
-                indices.push(first + 1);
-            }
-        }
-        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-        this.buffers.push({
-            type: gl.TRIANGLES,
-            color: color,
-            position: positionBuffer,
-            indices: indexBuffer,
-            size: indices.length
-        });
-        render.call(this);
+        parallel(
+            data,
+            function(d) {
+                positions.push.apply(positions, toXYZ(this, d));
+            }.bind(this),
+            function(d, i) {
+                this.positions = positions;
+                var size = lngs + 1;
+                for (var lat = 0; lat < lats; lat++) {
+                    for (var lng = 0; lng < lngs; lng++) {
+                        var first = (lat * size) + lng;
+                        var second = first + size;
+                        indices.push(first);
+                        indices.push(second);
+                        indices.push(first + 1);
+                        indices.push(second);
+                        indices.push(second + 1);
+                        indices.push(first + 1);
+                    }
+                }
+                gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+                this.buffers.unshift({
+                    type: gl.TRIANGLES,
+                    color: color,
+                    position: positionBuffer,
+                    indices: indexBuffer,
+                    size: indices.length
+                });
+                render.call(this);
+            }.bind(this)
+        );
     };
 
     function handleMouseMove(event) {
@@ -556,30 +622,6 @@
         this.lastScale = event.scale;
     }
 
-    function earcut(coords, dim) {
-        var array = [],
-            dim = dim || 2;
-        for (var i = 0, j = coords.length + 1 - dim; i < j; i += dim) {
-            var a = [];
-            for (var k = i, l = k + dim; k < l; k++) {
-                a.push(coords[k]);
-            }
-            a.push(0);
-            array.push(a);
-        }
-        array.sort(function(a, b) {
-            if (a[0] < b[0]) {
-                if (a[1] > b[1]) {
-                    if (a[1] < b[1]) {
-                        return 1;
-                    }
-                }
-            }
-            return -1;
-        });
-        var indices = [];
-    }
-
     function degToRad(degrees) {
         return degrees * Math.PI / 180;
     }
@@ -588,8 +630,9 @@
         return radians * 180 / Math.PI;
     }
 
-    function distancePoint(coordinate, distance, azimuth, radius) {
-        var angle = distance / radius,
+    function distancePoint(planet, coordinate, distance, azimuth) {
+        var radius = coordinate[2] !== undefined ? coordinate[2] + planet.opt.R : planet.opt.R,
+            angle = distance / radius,
             azimuth = degToRad(azimuth),
             lng = degToRad(coordinate[0]),
             lat = degToRad(coordinate[1]),
@@ -604,11 +647,12 @@
                 Math.sin(azimuth) * sinAngle * cosLat,
                 cosAngle - sinLat * alpha
             );
-        return [(radToDeg(lng) + 540) % 360 - 180, radToDeg(lat)];
+        return [(radToDeg(lng) + 540) % 360 - 180, radToDeg(lat), coordinate[2]];
     }
 
-    function toPoints(coordinate, radius) {
-        var lng = (180 + coordinate[0]) * (Math.PI / 180),
+    function toXYZ(planet, coordinate) {
+        var radius = coordinate[2] !== undefined ? coordinate[2] + planet.opt.R : planet.opt.R,
+            lng = (180 + coordinate[0]) * (Math.PI / 180),
             lat = (90 - coordinate[1]) * (Math.PI / 180);
         return [-radius * Math.sin(lat) * Math.cos(lng),
             radius * Math.cos(lat),
@@ -618,5 +662,17 @@
 
     function powerOf2(value) {
         return (value & -value) === value;
+    }
+
+    function parallel(data, work, then) {
+        var end = data.length - 1;
+        data.forEach(function(d, i) {
+            setTimeout(function() {
+                work(d);
+                if (i == end && then) {
+                    then(d, i);
+                }
+            }.bind(this), 0);
+        }.bind(this));
     }
 })();
