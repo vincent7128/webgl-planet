@@ -298,80 +298,10 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [];
-        for (var i = 0, j = coordinates.length - 1; i < j; i++) {
+        coordinates = lineMidPoints(coordinates);
+        for (var i = 0, j = coordinates.length; i < j; i++) {
             positions.push.apply(positions, toXYZ(this, coordinates[i]));
-            var a = coordinates[i],
-                b = coordinates[i + 1],
-                rad = Math.atan2(b[1] - a[1], b[0] - a[0]),
-                deg = radToDeg(rad),
-                m = (b[1] - a[1]) / (b[0] - a[0]),
-                mp = [];
-            switch (deg) {
-                case 0:
-                    for (var lng = a[0]; lng <= b[0]; lng++) {
-                        mp[0] = lng;
-                        mp[1] = a[1];
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                case 180:
-                    for (var lng = a[0]; lng >= b[0]; lng--) {
-                        mp[0] = lng;
-                        mp[1] = a[1];
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                case 90:
-                    for (var lat = a[1]; lat <= b[1]; lat++) {
-                        mp[0] = a[0];
-                        mp[1] = lat;
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                case -90:
-                    for (var lat = a[1]; lat >= b[1]; lat--) {
-                        mp[0] = a[0];
-                        mp[1] = lat;
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                default:
-                    if (deg > -45 && deg < 45) {
-                        for (var lng = a[0]; lng <= b[0]; lng++) {
-                            mp[0] = lng;
-                            mp[1] = (m * (lng - a[0])) + a[1];//lng * Math.tan(rad);
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    } else if (deg > 135 || deg < -135) {
-                        for (var lng = a[0]; lng >= b[0]; lng--) {
-                            mp[0] = lng;
-                            mp[1] = (m * (lng - a[0])) + a[1];//lng * Math.tan(rad);
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    } else if (deg > 0) {
-                        for (var lat = a[1]; lat <= b[1]; lat++) {
-                            mp[0] = ((lat - a[1]) / m) + a[0];//lat * Math.cos(rad);
-                            mp[1] = lat;
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    } else {
-                        for (var lat = a[1]; lat >= b[1]; lat--) {
-                            mp[0] = ((lat - a[1]) / m) + a[0];//lat * Math.cos(rad);
-                            mp[1] = lat;
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    }
-            };
         }
-        positions.push.apply(positions, toXYZ(this, coordinates[coordinates.length - 1]));
         for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
             if (i < k) {
@@ -397,15 +327,27 @@
             positionBuffer = gl.createBuffer(),
             positions = [],
             indexBuffer = gl.createBuffer(),
-            indices = [],
-            last = coordinates.length - 1;
-        coordinates.forEach(function(coordinate, i) {
-            positions.push.apply(positions, toXYZ(this, coordinate));
+            indices = [];
+        coordinates = lineMidPoints(coordinates);
+        for (var i = 0, j = coordinates.length; i < j; i++) {
+            coordinates[i][2] = coordinates[i][2] || 10;
+        }
+        for (var i = 0, j = coordinates.length; i < j; i++) {
+            positions.push.apply(positions, toXYZ(this, coordinates[i]));
+        }
+        for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
-            if (i < last) {
+            if (i < k) {
                 indices.push(i + 1);
             }
-        }.bind(this));
+        }
+        // coordinates.forEach(function(coordinate, i) {
+        //     positions.push.apply(positions, toXYZ(this, coordinate));
+        //     indices.push(i);
+        //     if (i < last) {
+        //         indices.push(i + 1);
+        //     }
+        // }.bind(this));
         indices.push(0);
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
@@ -539,13 +481,9 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [];
-        // TODO find bester way with tessellation
-        var precision = this.precision = 1;
-        var lats = 180 / precision;
-        var lngs = 360 / precision;
         var data = []
-        for (var lat = 90; lat >= -90; lat -= precision) {
-            for (var lng = 0; lng <= 360; lng += precision) {
+        for (var lat = 90; lat >= -90; lat--) {
+            for (var lng = 0; lng <= 360; lng++) {
                 data.push([lng, lat]);
             }
         }
@@ -556,11 +494,11 @@
             }.bind(this),
             function(d, i) {
                 this.positions = positions;
-                var size = lngs + 1;
-                for (var lat = 0; lat < lats; lat++) {
-                    for (var lng = 0; lng < lngs; lng++) {
-                        var first = (lat * size) + lng;
-                        var second = first + size;
+                var size = 361;
+                for (var lat = 0; lat < 180; lat++) {
+                    for (var lng = 0; lng < 360; lng++) {
+                        var first = (lat * 361) + lng;
+                        var second = first + 361;
                         indices.push(first);
                         indices.push(second);
                         indices.push(first + 1);
@@ -674,5 +612,91 @@
                 }
             }.bind(this), 0);
         }.bind(this));
+    }
+
+    function lineMidPoints(coordinates) {
+        var array = [];
+        for (var i = 0, j = coordinates.length - 1; i < j; i++) {
+            array.push(coordinates[i]);
+            var a = coordinates[i],
+                b = coordinates[i + 1],
+                rad = Math.atan2(b[1] - a[1], b[0] - a[0]),
+                deg = radToDeg(rad),
+                m = (b[1] - a[1]) / (b[0] - a[0]);
+            switch (deg) {
+                case 0:
+                    for (var lng = a[0]; lng <= b[0]; lng++) {
+                        array.push([
+                            lng,
+                            a[1],
+                            a[2]
+                        ]);
+                    }
+                    break;
+                case 180:
+                    for (var lng = a[0]; lng >= b[0]; lng--) {
+                        array.push([
+                            lng,
+                            a[1],
+                            a[2]
+                        ]);
+                    }
+                    break;
+                case 90:
+                    for (var lat = a[1]; lat <= b[1]; lat++) {
+                        array.push([
+                            a[0],
+                            lat,
+                            a[2]
+                        ]);
+                    }
+                    break;
+                case -90:
+                    for (var lat = a[1]; lat >= b[1]; lat--) {
+                        array.push([
+                            a[0],
+                            lat,
+                            a[2]
+                        ]);
+                    }
+                    break;
+                default:
+                    if (deg > -45 && deg < 45) {
+                        for (var lng = a[0]; lng <= b[0]; lng++) {
+                            array.push([
+                                lng,
+                                (m * (lng - a[0])) + a[1],
+                                a[2]
+                            ]);
+                        }
+                    } else if (deg > 135 || deg < -135) {
+                        for (var lng = a[0]; lng >= b[0]; lng--) {
+                            array.push([
+                                lng,
+                                (m * (lng - a[0])) + a[1],
+                                a[2]
+                            ]);
+                        }
+                    } else if (deg > 0) {
+                        for (var lat = a[1]; lat <= b[1]; lat++) {
+                            array.push([
+                                ((lat - a[1]) / m) + a[0],
+                                lat,
+                                a[2]
+                            ]);
+                        }
+                    } else {
+                        for (var lat = a[1]; lat >= b[1]; lat--) {
+                            array.push([
+                                ((lat - a[1]) / m) + a[0],
+                                lat,
+                                a[2]
+                            ]);
+                        }
+                    }
+            };
+        }
+        array.push(coordinates[coordinates.length - 1]);
+        return array;
     }
 })();
