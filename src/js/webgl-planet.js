@@ -1,6 +1,19 @@
 (function() {
     var vertexShaderScript =
         'attribute vec4 vertexPosition;\
+         uniform mat4 projectionMatrix;\
+         uniform mat4 modelViewMatrix;\
+         void main(void) {\
+             gl_Position = projectionMatrix * modelViewMatrix * vertexPosition;\
+         }',
+        vertexFragmentScript =
+        'precision mediump float;\
+         uniform vec4 vertexColor;\
+         void main(void) {\
+             gl_FragColor = vertexColor;\
+         }',
+        textureShaderScript =
+        'attribute vec4 vertexPosition;\
          attribute vec2 textureCoord;\
          uniform mat4 projectionMatrix;\
          uniform mat4 modelViewMatrix;\
@@ -9,19 +22,13 @@
              gl_Position = projectionMatrix * modelViewMatrix * vertexPosition;\
              coord = textureCoord;\
          }',
-        fragmentShaderScript =
+        textureFragmentScript =
         'precision mediump float;\
-         uniform bool useColor;\
-         uniform vec4 vertexColor;\
          uniform sampler2D sampler;\
          varying vec2 coord;\
          void main(void) {\
-             if (useColor) {\
-                 gl_FragColor = vertexColor;\
-             } else {\
-                 vec4 color = texture2D(sampler, vec2(coord.s, coord.t));\
-                 gl_FragColor = vec4(color.rgb, color.a);\
-             }\
+             vec4 color = texture2D(sampler, vec2(coord.s, coord.t));\
+             gl_FragColor = vec4(color.rgb, color.a);\
          }',
         textImage = TextImage({
             align: 'center',
@@ -59,7 +66,6 @@
             this.resizeEvent = this.updateSize.bind(this),
             false
         );
-        if (!window.TouchEvent) {
             var mouseRotateEvent = handleMouseMove.bind(this),
                 mouseZoomEvent = handleMouseWheel.bind(this);
             canvas.addEventListener('mousedown', function(event) {
@@ -78,7 +84,7 @@
             canvas.addEventListener('mouseout', function(event) {
                 canvas.removeEventListener('wheel', mouseZoomEvent);
             }, false);
-        } else {
+        if (window.TouchEvent) {
             var touchRotateEvent = handleTouchMove.bind(this),
                 touchZoomEvent = handleTouchZoom.bind(this);
             canvas.addEventListener('touchstart', function(event) {
@@ -263,6 +269,7 @@
             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         }
         this.buffers.push({
+            program: gl.textureProgram,
             type: gl.TRIANGLES,
             texture: texture,
             position: positionBuffer,
@@ -283,6 +290,7 @@
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         this.buffers.push({
+            program: gl.vertexProgram,
             type: gl.POINT,
             color: color,
             position: positionBuffer,
@@ -298,80 +306,10 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [];
-        for (var i = 0, j = coordinates.length - 1; i < j; i++) {
+        coordinates = lineMidPoints(coordinates);
+        for (var i = 0, j = coordinates.length; i < j; i++) {
             positions.push.apply(positions, toXYZ(this, coordinates[i]));
-            var a = coordinates[i],
-                b = coordinates[i + 1],
-                rad = Math.atan2(b[1] - a[1], b[0] - a[0]),
-                deg = radToDeg(rad),
-                m = (b[1] - a[1]) / (b[0] - a[0]),
-                mp = [];
-            switch (deg) {
-                case 0:
-                    for (var lng = a[0]; lng <= b[0]; lng++) {
-                        mp[0] = lng;
-                        mp[1] = a[1];
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                case 180:
-                    for (var lng = a[0]; lng >= b[0]; lng--) {
-                        mp[0] = lng;
-                        mp[1] = a[1];
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                case 90:
-                    for (var lat = a[1]; lat <= b[1]; lat++) {
-                        mp[0] = a[0];
-                        mp[1] = lat;
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                case -90:
-                    for (var lat = a[1]; lat >= b[1]; lat--) {
-                        mp[0] = a[0];
-                        mp[1] = lat;
-                        mp[2] = a[2];
-                        positions.push.apply(positions, toXYZ(this, mp));
-                    }
-                    break;
-                default:
-                    if (deg > -45 && deg < 45) {
-                        for (var lng = a[0]; lng <= b[0]; lng++) {
-                            mp[0] = lng;
-                            mp[1] = (m * (lng - a[0])) + a[1];//lng * Math.tan(rad);
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    } else if (deg > 135 || deg < -135) {
-                        for (var lng = a[0]; lng >= b[0]; lng--) {
-                            mp[0] = lng;
-                            mp[1] = (m * (lng - a[0])) + a[1];//lng * Math.tan(rad);
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    } else if (deg > 0) {
-                        for (var lat = a[1]; lat <= b[1]; lat++) {
-                            mp[0] = ((lat - a[1]) / m) + a[0];//lat * Math.cos(rad);
-                            mp[1] = lat;
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    } else {
-                        for (var lat = a[1]; lat >= b[1]; lat--) {
-                            mp[0] = ((lat - a[1]) / m) + a[0];//lat * Math.cos(rad);
-                            mp[1] = lat;
-                            mp[2] = a[2];
-                            positions.push.apply(positions, toXYZ(this, mp));
-                        }
-                    }
-            };
         }
-        positions.push.apply(positions, toXYZ(this, coordinates[coordinates.length - 1]));
         for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
             if (i < k) {
@@ -383,6 +321,7 @@
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         this.buffers.push({
+            program: gl.vertexProgram,
             type: gl.LINES,
             color: color,
             position: positionBuffer,
@@ -397,21 +336,34 @@
             positionBuffer = gl.createBuffer(),
             positions = [],
             indexBuffer = gl.createBuffer(),
-            indices = [],
-            last = coordinates.length - 1;
-        coordinates.forEach(function(coordinate, i) {
-            positions.push.apply(positions, toXYZ(this, coordinate));
+            indices = [];
+        coordinates = lineMidPoints(coordinates);
+        for (var i = 0, j = coordinates.length; i < j; i++) {
+            coordinates[i][2] = coordinates[i][2] || 10;
+        }
+        for (var i = 0, j = coordinates.length; i < j; i++) {
+            positions.push.apply(positions, toXYZ(this, coordinates[i]));
+        }
+        for (var i = 0, j = positions.length / 3, k = j - 1; i < j; i++) {
             indices.push(i);
-            if (i < last) {
+            if (i < k) {
                 indices.push(i + 1);
             }
-        }.bind(this));
+        }
+        // coordinates.forEach(function(coordinate, i) {
+        //     positions.push.apply(positions, toXYZ(this, coordinate));
+        //     indices.push(i);
+        //     if (i < last) {
+        //         indices.push(i + 1);
+        //     }
+        // }.bind(this));
         indices.push(0);
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
         this.buffers.push({
+            program: gl.vertexProgram,
             // TODO fill up polygon with triangles
             type: gl.LINES, // gl.TRIANGLES,
             color: color,
@@ -457,39 +409,36 @@
             gl.modelViewMatrix,
             this.y, [0, 1, 0]
         );
-        gl.uniformMatrix4fv(
-            gl.uniforms.projectionMatrix,
-            false,
-            gl.projectionMatrix
-        );
-        gl.uniformMatrix4fv(
-            gl.uniforms.modelViewMatrix,
-            false,
-            gl.modelViewMatrix
-        );
         this.buffers.forEach(function(buffer) {
             renderBuffer(buffer);
         });
 
         function renderBuffer(buffer) {
+            gl.useProgram(buffer.program.program);
             gl.bindBuffer(gl.ARRAY_BUFFER, buffer.position);
-            gl.vertexAttribPointer(gl.attribs.vertexPosition, 3, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(gl.attribs.vertexPosition);
+            gl.vertexAttribPointer(buffer.program.attribs.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(buffer.program.attribs.vertexPosition);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indices);
             if (buffer.texture) {
-                gl.uniform1i(gl.uniforms.useColor, false);
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffer.texture.coords);
-                gl.vertexAttribPointer(gl.attribs.textureCoord, 2, gl.FLOAT, false, 0, 0);
-                gl.enableVertexAttribArray(gl.attribs.textureCoord);
+                gl.vertexAttribPointer(buffer.program.attribs.textureCoord, 2, gl.FLOAT, false, 0, 0);
+                gl.enableVertexAttribArray(buffer.program.attribs.textureCoord);
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, buffer.texture);
-                gl.uniform1i(gl.uniforms.sampler, 0);
+                gl.uniform1i(buffer.program.uniforms.sampler, 0);
             } else {
-                gl.uniform1i(gl.uniforms.useColor, true);
-                gl.disableVertexAttribArray(gl.attribs.textureCoord);
-                gl.uniform1i(gl.uniforms.sampler, null);
-                gl.uniform4fv(gl.uniforms.vertexColor, buffer.color);
+                gl.uniform4fv(buffer.program.uniforms.vertexColor, buffer.color);
             }
+            gl.uniformMatrix4fv(
+                buffer.program.uniforms.projectionMatrix,
+                false,
+                gl.projectionMatrix
+            );
+            gl.uniformMatrix4fv(
+                buffer.program.uniforms.modelViewMatrix,
+                false,
+                gl.modelViewMatrix
+            );
             gl.drawElements(buffer.type, buffer.size, gl.UNSIGNED_SHORT, 0);
         }
     };
@@ -498,28 +447,54 @@
         var vertexShader = gl.createShader(gl.VERTEX_SHADER);
         gl.shaderSource(vertexShader, vertexShaderScript);
         gl.compileShader(vertexShader);
-        var vertexFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(vertexFragmentShader, fragmentShaderScript);
-        gl.compileShader(vertexFragmentShader);
-        var program = gl.createProgram();
-        gl.attachShader(program, vertexShader);
-        gl.attachShader(program, vertexFragmentShader);
-        gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        var vertexFragment = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(vertexFragment, vertexFragmentScript);
+        gl.compileShader(vertexFragment);
+        var vertexProgram = gl.createProgram();
+        gl.attachShader(vertexProgram, vertexShader);
+        gl.attachShader(vertexProgram, vertexFragment);
+        gl.linkProgram(vertexProgram);
+        if (!gl.getProgramParameter(vertexProgram, gl.LINK_STATUS)) {
             throw "Could not initialise shaders";
         }
-        gl.attribs = {
-            vertexPosition: gl.getAttribLocation(program, 'vertexPosition'),
-            textureCoord: gl.getAttribLocation(program, 'textureCoord'),
+        gl.vertexProgram = {
+            program: vertexProgram,
+            attribs: {
+                vertexPosition: gl.getAttribLocation(vertexProgram, 'vertexPosition')
+            },
+            uniforms: {
+                projectionMatrix: gl.getUniformLocation(vertexProgram, 'projectionMatrix'),
+                modelViewMatrix: gl.getUniformLocation(vertexProgram, 'modelViewMatrix'),
+                vertexColor: gl.getUniformLocation(vertexProgram, 'vertexColor')
+            }
         };
-        gl.uniforms = {
-            projectionMatrix: gl.getUniformLocation(program, 'projectionMatrix'),
-            modelViewMatrix: gl.getUniformLocation(program, 'modelViewMatrix'),
-            vertexColor: gl.getUniformLocation(program, 'vertexColor'),
-            useColor: gl.getUniformLocation(program, 'useColor'),
-            sampler: gl.getUniformLocation(program, 'sampler')
+
+        var textureShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(textureShader, textureShaderScript);
+        gl.compileShader(textureShader);
+        var textureFragment = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(textureFragment, textureFragmentScript);
+        gl.compileShader(textureFragment);
+        var textureProgram = gl.createProgram();
+        gl.attachShader(textureProgram, textureShader);
+        gl.attachShader(textureProgram, textureFragment);
+        gl.linkProgram(textureProgram);
+        if (!gl.getProgramParameter(textureProgram, gl.LINK_STATUS)) {
+            throw "Could not initialise shaders";
+        }
+        gl.textureProgram = {
+            program: textureProgram,
+            attribs: {
+                vertexPosition: gl.getAttribLocation(textureProgram, 'vertexPosition'),
+                textureCoord: gl.getAttribLocation(textureProgram, 'textureCoord')
+            },
+            uniforms: {
+                projectionMatrix: gl.getUniformLocation(textureProgram, 'projectionMatrix'),
+                modelViewMatrix: gl.getUniformLocation(textureProgram, 'modelViewMatrix'),
+                sampler: gl.getUniformLocation(textureProgram, 'sampler')
+            }
         };
-        gl.useProgram(program);
+
         gl.projectionMatrix = mat4.create();
         gl.modelViewMatrix = mat4.create();
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -539,13 +514,9 @@
             positions = [],
             indexBuffer = gl.createBuffer(),
             indices = [];
-        // TODO find bester way with tessellation
-        var precision = this.precision = 1;
-        var lats = 180 / precision;
-        var lngs = 360 / precision;
         var data = []
-        for (var lat = 90; lat >= -90; lat -= precision) {
-            for (var lng = 0; lng <= 360; lng += precision) {
+        for (var lat = 90; lat >= -90; lat--) {
+            for (var lng = 0; lng <= 360; lng++) {
                 data.push([lng, lat]);
             }
         }
@@ -556,11 +527,11 @@
             }.bind(this),
             function(d, i) {
                 this.positions = positions;
-                var size = lngs + 1;
-                for (var lat = 0; lat < lats; lat++) {
-                    for (var lng = 0; lng < lngs; lng++) {
-                        var first = (lat * size) + lng;
-                        var second = first + size;
+                var size = 361;
+                for (var lat = 0; lat < 180; lat++) {
+                    for (var lng = 0; lng < 360; lng++) {
+                        var first = (lat * 361) + lng;
+                        var second = first + 361;
                         indices.push(first);
                         indices.push(second);
                         indices.push(first + 1);
@@ -574,6 +545,7 @@
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
                 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
                 this.buffers.unshift({
+                    program: gl.vertexProgram,
                     type: gl.TRIANGLES,
                     color: color,
                     position: positionBuffer,
@@ -674,5 +646,91 @@
                 }
             }.bind(this), 0);
         }.bind(this));
+    }
+
+    function lineMidPoints(coordinates) {
+        var array = [];
+        for (var i = 0, j = coordinates.length - 1; i < j; i++) {
+            array.push(coordinates[i]);
+            var a = coordinates[i],
+                b = coordinates[i + 1],
+                rad = Math.atan2(b[1] - a[1], b[0] - a[0]),
+                deg = radToDeg(rad),
+                m = (b[1] - a[1]) / (b[0] - a[0]);
+            switch (deg) {
+                case 0:
+                    for (var lng = a[0]; lng <= b[0]; lng++) {
+                        array.push([
+                            lng,
+                            a[1],
+                            a[2]
+                        ]);
+                    }
+                    break;
+                case 180:
+                    for (var lng = a[0]; lng >= b[0]; lng--) {
+                        array.push([
+                            lng,
+                            a[1],
+                            a[2]
+                        ]);
+                    }
+                    break;
+                case 90:
+                    for (var lat = a[1]; lat <= b[1]; lat++) {
+                        array.push([
+                            a[0],
+                            lat,
+                            a[2]
+                        ]);
+                    }
+                    break;
+                case -90:
+                    for (var lat = a[1]; lat >= b[1]; lat--) {
+                        array.push([
+                            a[0],
+                            lat,
+                            a[2]
+                        ]);
+                    }
+                    break;
+                default:
+                    if (deg > -45 && deg < 45) {
+                        for (var lng = a[0]; lng <= b[0]; lng++) {
+                            array.push([
+                                lng,
+                                (m * (lng - a[0])) + a[1],
+                                a[2]
+                            ]);
+                        }
+                    } else if (deg > 135 || deg < -135) {
+                        for (var lng = a[0]; lng >= b[0]; lng--) {
+                            array.push([
+                                lng,
+                                (m * (lng - a[0])) + a[1],
+                                a[2]
+                            ]);
+                        }
+                    } else if (deg > 0) {
+                        for (var lat = a[1]; lat <= b[1]; lat++) {
+                            array.push([
+                                ((lat - a[1]) / m) + a[0],
+                                lat,
+                                a[2]
+                            ]);
+                        }
+                    } else {
+                        for (var lat = a[1]; lat >= b[1]; lat--) {
+                            array.push([
+                                ((lat - a[1]) / m) + a[0],
+                                lat,
+                                a[2]
+                            ]);
+                        }
+                    }
+            };
+        }
+        array.push(coordinates[coordinates.length - 1]);
+        return array;
     }
 })();
